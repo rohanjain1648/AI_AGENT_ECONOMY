@@ -122,5 +122,10 @@ cython_debug/
 .DS_Store
 Thumbs.db
 
+# Credentials
+credentials.json
+token.json
+token.pickle
+
 # VS Code
 .vscode/
