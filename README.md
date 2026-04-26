@@ -32,83 +32,85 @@ Modern B2B sales is a manual grind. Sales Development Reps (SDRs) spend **65% of
 
 ---
 
-## ✨ Features
-- 🧠 **Autonomous Orchestrator**: Manages complex state across discovery, research, and writing.
-- 🔍 **Agentic Research**: Uses Claude 3.5 Sonnet with a recursive tool-use loop to search the web.
-- 📊 **Intelligent Scoring**: Evaluates leads based on pain-point alignment and growth signals.
-- ✉️ **Multi-Stage Outreach**: Generates a Day 1, Day 3, and Day 7 sequence for every lead.
-- 📥 **Gmail Integration**: Syncs directly with Google Workspace to populate your drafts folder.
-- 🛠️ **TokenRouter Ready**: Built-in support for discounted AI inference.
+## ✨ Features & The Agent Squad
+LeadForge isn't a single script; it's a team of specialized AI agents working in harmony.
+
+### 🧠 The Orchestrator (The Mastermind)
+The **Orchestrator** is the central nervous system of LeadForge. It manages the global state, handles progress callbacks to the UI, and ensures the pipeline flows smoothly from a raw idea to a finished draft. 
+- **Role**: State management, Error handling, and Tool coordination.
+- **Key Logic**: It determines when to skip a lead based on the score and when to proceed to the writing stage.
+
+### 🔭 The Discovery Agent (The Scout)
+Before we can research, we need to know who to look for. The **Discovery Agent** uses high-level reasoning to brainstorm real-world companies that match your Ideal Customer Profile (ICP).
+- **Work**: Generates a list of target companies by synthesizing industry trends and geography.
+- **Backup**: If LLM brainstorming fails, it falls back to targeted web search queries to find candidates.
+
+### 🔍 The Research Agent (The Investigator)
+The most complex member of the team. The **Research Agent** operates in an autonomous, multi-turn "ReAct" loop.
+- **Work**: It uses the `web_search` tool to browse live news, websites, and LinkedIn data.
+- **Intelligence**: It doesn't just read; it looks for specific "Sales Triggers" (e.g., a recent merger, a new CEO, or a specific technology adoption).
+- **Output**: A structured intelligence profile of the company.
+
+### ⚖️ The Qualification Agent (The Judge)
+Embedded within the research flow, this agent acts as a filter.
+- **Work**: It compares the research findings against your product description to assign a **0-100 fit score**.
+- **Reasoning**: It provides a 1-2 sentence justification for every score, ensuring transparency in why a lead was selected or rejected.
+
+### ✍️ The Outreach Writer (The Copywriter)
+Once a lead is qualified, the **Writer Agent** takes over.
+- **Work**: It synthesizes the research (pain points, growth signals) into a **3-touch email sequence** (Day 1, 3, and 7).
+- **Philosophy**: It follows strict rules to avoid "AI-sounding" buzzwords, focusing on short, punchy, and highly relevant copy that feels human.
+
+### ✉️ The Gmail Integrator (The Closer)
+The final bridge to reality. It takes the writer's output and uses the **Google Workspace API** to create drafts in your inbox, ready for a final human review.
+
+### 🗺️ User Journey
+1. **Define**: Input your product description and target audience (Industry, Size, Title) in the dashboard.
+2. **Launch**: Click "Launch LeadForge" to activate the agent squad.
+3. **Monitor**: Watch the live **Agent Activity** log as the researcher performs real-time web searches.
+4. **Evaluate**: Review the **Qualified Leads** list, check the AI's reasoning, and inspect the research findings.
+5. **Finalize**: Open your Gmail drafts, do a final sanity check, and hit send!
 
 ---
 
-## 🗺️ User Journey
-1. **Define**: Input your product description and define your target Industry, Company Size, and Title.
-2. **Launch**: Click "Launch LeadForge" to wake up the agents.
-3. **Observe**: Watch the live "Agent Activity" log as the researcher searches the web in real-time.
-4. **Review**: Analyze qualified leads, their scores, and the generated outreach.
-5. **Send**: Review the drafts automatically created in your Gmail and hit "Send".
+## 🏗️ Architecture & Deep Dive
 
----
-
-## 🏗️ Architecture
-
-LeadForge uses a **Hierarchical Agent Architecture** where a central Orchestrator delegates tasks to specialized agents.
+### System Design
+LeadForge follows a **Hierarchical Agent Pattern**. Unlike flat chains, the Orchestrator has full control over the sub-agents, allowing for complex decision-making (like stopping the research of a company if initial signals are poor).
 
 ```mermaid
 graph TD
-    User([User]) --> UI[Streamlit Frontend]
-    UI --> Orchestrator[LeadForge Orchestrator]
+    User([User Prompt]) --> Streamlit[Streamlit UI]
+    Streamlit --> Orchestrator{Orchestrator}
     
-    subgraph Agents
-        Orchestrator --> DA[Discovery Agent]
-        Orchestrator --> RA[Research Agent]
-        Orchestrator --> WA[Outreach Writer]
+    subgraph Pipeline
+        Orchestrator --> Discovery[Discovery Agent]
+        Discovery --> Research[Research Agent]
+        Research --> ToolLoop[Agentic Tool Loop]
+        ToolLoop --> WebSearch[Serper API]
+        Research --> Scorer[Qualification Agent]
+        Scorer --> Writer[Outreach Writer]
     end
     
-    subgraph Tools
-        RA --> WS[Web Search Tool / Serper]
-        RA --> LLM[Claude 3.5 Sonnet]
+    subgraph Delivery
+        Writer --> Gmail[Gmail API]
+        Gmail --> Drafts[/Gmail Drafts Folder/]
     end
     
-    subgraph Integrations
-        WA --> Gmail[Gmail API / Drafts]
-    end
-    
-    DA -- "Company List" --> Orchestrator
-    RA -- "Structured Research" --> Orchestrator
-    WA -- "Email Sequence" --> Orchestrator
+    Scorer -- "If Score < Threshold" --> Skip[Skip Lead]
+    Scorer -- "If Score >= Threshold" --> Writer
 ```
 
----
-
-## 🔄 Workflow
-
-The sequential process that turns a prompt into a qualified lead.
-
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant O as Orchestrator
-    participant R as Researcher
-    participant W as Writer
-    participant G as Gmail
-
-    U->>O: Product Desc + ICP
-    O->>O: Discovery Loop (Generate Leads)
-    loop For Each Lead
-        O->>R: Research Company (Agentic Loop)
-        R->>R: Web Search Tools
-        R-->>O: JSON Research Data
-        O->>O: Scoring (0-100)
-        alt Score > Threshold
-            O->>W: Generate 3-Stage Sequence
-            W-->>O: Email Drafts
-            O->>G: Create Gmail Drafts
-        end
-    end
-    O-->>U: Final Campaign Report
-```
+### Detailed User Flow
+1. **Input Phase**: User provides product context and ICP filters via the Streamlit sidebar.
+2. **Expansion Phase**: The Discovery Agent generates ~10-20 candidate companies to ensure we hit the "Qualify N" target.
+3. **Investigation Phase**: 
+    - The Researcher triggers. It performs 3-5 recursive searches per company.
+    - Findings are parsed into a `ResearchData` model.
+4. **Scoring Phase**: The Scorer evaluates the lead. If the score is below the user-defined threshold, the lead is discarded to save API costs on the writing phase.
+5. **Creative Phase**: For high-scoring leads, the Writer crafts the sequence, injecting "Snippets of Truth" (specific news items) discovered in Phase 3.
+6. **Execution Phase**: The Gmail Client authenticates and populates the user's Drafts folder.
+7. **Review Phase**: The user receives a comprehensive dashboard in Streamlit with metrics (Avg Score, Companies Researched, etc.) and can then head to Gmail to hit 'Send'.
 
 ---
 
@@ -255,5 +257,5 @@ A: In the UI, it's set to 1-10 for speed, but the backend can handle bulk proces
 ---
 
 <div align="center">
-Built with ❤️ for the AI Agent Economy.
+Built by ROHAN JAIN for the AI Agent Economy.
 </div>
